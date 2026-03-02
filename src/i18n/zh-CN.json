@@ -10,6 +10,7 @@
   "step.1": "选择原始图片",
   "step.2": "算法自动解析",
   "step.3": "保存无水印图",
+  "preview.compare": "对比预览",
   "preview.original": "原图预览",
   "preview.result": "处理结果",
   "panel.title": "操作面板",
