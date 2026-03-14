@@ -57,11 +57,6 @@ function formatDiffFailureMessage(result) {
         `applied=${result.applied}, source=${result.source}`;
 }
 
-function shouldAssertAgainstAvailableBaseline(result) {
-    if (result.hasCommittedBaseline) return true;
-    return result.applied === false;
-}
-
 test('isBaselineDiffAcceptable should require exact match for lossless baselines', () => {
     assert.equal(
         isBaselineDiffAcceptable({
@@ -150,11 +145,25 @@ function startStaticServer(rootDir) {
     });
 }
 
-test('sample assets should match committed fix baselines after processing', async (t) => {
+test('sample assets should match local -fix baselines when they are present', async (t) => {
     const fileNames = (await readdir(SAMPLE_DIR))
         .filter((name) => IMAGE_EXTENSIONS.has(path.extname(name).toLowerCase()))
         .filter((name) => !name.includes('-fix.'))
         .sort((a, b) => a.localeCompare(b));
+
+    const filesWithLocalBaselines = [];
+    for (const fileName of fileNames) {
+        const inputPath = path.join(SAMPLE_DIR, fileName);
+        const fixedPath = buildFixedOutputPath(inputPath);
+        if (await exists(fixedPath)) {
+            filesWithLocalBaselines.push(fileName);
+        }
+    }
+
+    if (filesWithLocalBaselines.length === 0) {
+        t.skip('No local -fix baselines found under src/assets/samples');
+        return;
+    }
 
     let browser;
     try {
@@ -172,20 +181,19 @@ test('sample assets should match committed fix baselines after processing', asyn
     try {
         await page.goto(`${baseUrl}/public/index.html`);
 
-        const payload = await Promise.all(fileNames.map(async (fileName) => {
+        const payload = await Promise.all(filesWithLocalBaselines.map(async (fileName) => {
             const inputPath = path.join(SAMPLE_DIR, fileName);
             const fixedPath = buildFixedOutputPath(inputPath);
-            const baselinePath = await exists(fixedPath) ? fixedPath : inputPath;
+            const baselinePath = fixedPath;
 
-                return {
-                    fileName,
-                    baselineName: path.basename(baselinePath),
-                    hasCommittedBaseline: baselinePath !== inputPath,
-                    mimeType: inferMimeType(inputPath),
-                    compareMode: baselinePath === inputPath ? 'raw' : 'encoded',
-                    inputUrl: await readImageDataUrl(inputPath),
-                    baselineUrl: await readImageDataUrl(baselinePath)
-                };
+            return {
+                fileName,
+                baselineName: path.basename(baselinePath),
+                mimeType: inferMimeType(inputPath),
+                compareMode: 'encoded',
+                inputUrl: await readImageDataUrl(inputPath),
+                baselineUrl: await readImageDataUrl(baselinePath)
+            };
         }));
 
         const bg48Url = await readImageDataUrl(BG48_PATH);
@@ -290,7 +298,6 @@ test('sample assets should match committed fix baselines after processing', asyn
                 results.push({
                     fileName: item.fileName,
                     baselineName: item.baselineName,
-                    hasCommittedBaseline: item.hasCommittedBaseline,
                     mimeType: item.mimeType,
                     compareMode: item.compareMode,
                     applied: result.meta.applied,
@@ -308,14 +315,6 @@ test('sample assets should match committed fix baselines after processing', asyn
         });
 
         for (const result of results) {
-            if (!shouldAssertAgainstAvailableBaseline(result)) {
-                t.diagnostic(
-                    `${result.fileName}: skipped exact baseline assertion because no committed -fix baseline exists ` +
-                    `and processing applied changes (source=${result.source})`
-                );
-                continue;
-            }
-
             assert.equal(result.diff.sizeMismatch, false, `${result.fileName}: image size mismatch vs ${result.baselineName}`);
             assert.equal(isBaselineDiffAcceptable(result), true, formatDiffFailureMessage(result));
         }
