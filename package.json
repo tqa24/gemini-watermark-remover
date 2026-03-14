@@ -22,6 +22,10 @@
     "./image-data": {
       "types": "./src/sdk/image-data.d.ts",
       "import": "./src/sdk/image-data.js"
+    },
+    "./node": {
+      "types": "./src/sdk/node.d.ts",
+      "import": "./src/sdk/node.js"
     }
   },
   "scripts": {

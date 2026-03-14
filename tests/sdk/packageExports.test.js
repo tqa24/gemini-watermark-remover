@@ -15,12 +15,15 @@ async function exists(filePath) {
 test('package should expose browser and image-data sdk subpaths', async () => {
     const browserSdk = await import('gemini-watermark-remover/browser');
     const imageDataSdk = await import('gemini-watermark-remover/image-data');
+    const nodeSdk = await import('gemini-watermark-remover/node');
 
     assert.equal(typeof browserSdk.removeWatermarkFromImage, 'function');
     assert.equal(typeof browserSdk.createWatermarkEngine, 'function');
     assert.equal(typeof imageDataSdk.removeWatermarkFromImageData, 'function');
     assert.equal(typeof imageDataSdk.removeWatermarkFromImageDataSync, 'function');
     assert.equal(typeof imageDataSdk.createWatermarkEngine, 'function');
+    assert.equal(typeof nodeSdk.removeWatermarkFromBuffer, 'function');
+    assert.equal(typeof nodeSdk.removeWatermarkFromFile, 'function');
 });
 
 test('package exports should declare type entrypoints for public sdk surface', async () => {
@@ -30,9 +33,11 @@ test('package exports should declare type entrypoints for public sdk surface', a
     assert.equal(typeof exportsMap['.'], 'object');
     assert.equal(typeof exportsMap['./browser'], 'object');
     assert.equal(typeof exportsMap['./image-data'], 'object');
+    assert.equal(typeof exportsMap['./node'], 'object');
     assert.equal(typeof packageJson.types, 'string');
 
     assert.equal(await exists('../../src/sdk/index.d.ts'), true);
     assert.equal(await exists('../../src/sdk/browser.d.ts'), true);
     assert.equal(await exists('../../src/sdk/image-data.d.ts'), true);
+    assert.equal(await exists('../../src/sdk/node.d.ts'), true);
 });
